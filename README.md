@@ -80,5 +80,3 @@ Akses aplikasi API di postman atau lainnya:
 ```
 http://127.0.0.1:8000
 ```
-
-```
