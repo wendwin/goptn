@@ -7,8 +7,7 @@
 # GOPTN — Web App Starter (Laravel + Tailwind)
 
 Project ini dibuat menggunakan **Laravel 12**, **MySQL**, dan **Tailwind CSS** dengan dukungan **Vite Auto Reload**.  
-Saat ini sudah terdapat tampilan awal dengan struktur komponen (Navbar & Hero).
-
+Selengkpanya baca Documentations API Endpoinnya di: https://documenter.getpostman.com/view/32171174/2sB3dMxBE8 
 ---
 
 ## Environment Versions (Development)
@@ -69,7 +68,7 @@ DB_PASSWORD=
 Buat database:
 
 ```sql
-CREATE DATABASE goptn;
+CREATE DATABASE goptn_db;
 ```
 
 Jalankan migrasi:
