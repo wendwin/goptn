@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\StudentAuthController;
 use App\Http\Controllers\StudentSetupController;
+use App\Http\Controllers\CampusController;
+use App\Http\Controllers\MajorController;
 
 Route::post('auth/admin/login', [AdminAuthController::class, 'login']);
 
@@ -33,3 +35,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/student/update', [StudentSetupController::class, 'update']);
     Route::delete('/student/setup/delete', [StudentSetupController::class, 'destroy']);
 });
+
+Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+
+    // Kampus CRUD
+    Route::get('/campus', [CampusController::class, 'index']);
+    Route::post('/campus', [CampusController::class, 'store']);
+    Route::get('/campus/{id}', [CampusController::class, 'show']);
+    Route::put('/campus/{id}', [CampusController::class, 'update']);
+    Route::delete('/campus/{id}', [CampusController::class, 'destroy']);
+
+    // Jurusan CRUD
+    Route::get('/major', [MajorController::class, 'index']);
+    Route::post('/major', [MajorController::class, 'store']);
+    Route::get('/major/{id}', [MajorController::class, 'show']);
+    Route::put('/major/{id}', [MajorController::class, 'update']);
+    Route::delete('/major/{id}', [MajorController::class, 'destroy']);
+});
+
