@@ -13,16 +13,17 @@ class JadwalAdmission extends Model
         'type',
         'category',
         'campus_id',
-        'name',
-        'start_date',
-        'end_date',
-        'batch',
-        'status',
-        'description',
+        'status', 
+        'description', 
     ];
 
     public function campus()
     {
         return $this->belongsTo(Campus::class);
+    }
+
+    public function items()
+    {
+        return $this->hasMany(AdmissionItem::class, 'admission_id');
     }
 }

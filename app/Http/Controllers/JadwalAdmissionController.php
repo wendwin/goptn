@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\JadwalAdmission;
+use App\Models\AdmissionItem;
 use Illuminate\Http\Request;
 
 class JadwalAdmissionController extends Controller
 {
     public function index()
     {
-        return JadwalAdmission::with('campus')->orderBy('start_date')->get();
+        return JadwalAdmission::with(['campus', 'items'])->orderBy('created_at', 'desc')->get();
     }
 
     public function store(Request $request)
@@ -19,10 +20,7 @@ class JadwalAdmissionController extends Controller
             'category' => 'nullable|in:snbp,snbt,mandiri',
             'campus_id' => 'nullable|exists:campuses,id',
 
-            // bulk insert array
             'items' => 'required|array|min:1',
-
-            // fields inside items
             'items.*.name' => 'required|string',
             'items.*.start_date' => 'nullable|date',
             'items.*.end_date' => 'nullable|date|after_or_equal:items.*.start_date',
@@ -31,7 +29,6 @@ class JadwalAdmissionController extends Controller
             'items.*.description' => 'nullable|string',
         ]);
 
-        // rule tambahan berdasarkan type
         if ($validated['type'] === 'national' && empty($validated['category'])) {
             return response()->json(['error' => 'category is required for national type'], 422);
         }
@@ -39,57 +36,29 @@ class JadwalAdmissionController extends Controller
         if ($validated['type'] === 'mandiri' && empty($validated['campus_id'])) {
             return response()->json(['error' => 'campus_id is required for mandiri type'], 422);
         }
-
-        $records = [];
+        $admission = JadwalAdmission::create([
+            'type' => $validated['type'],
+            'category' => $validated['category'] ?? null,
+            'campus_id' => $validated['campus_id'] ?? null,
+        ]);
 
         foreach ($validated['items'] as $item) {
-            $records[] = JadwalAdmission::create([
-                'type' => $validated['type'],
-                'category' => $validated['category'],
-                'campus_id' => $validated['campus_id'] ?? null,
+            AdmissionItem::create([
+                'admission_id' => $admission->id,
                 ...$item
             ]);
         }
 
         return response()->json([
-            'message' => 'Bulk data created successfully',
-            'total_inserted' => count($records),
-            'data' => $records
+            'message' => 'Admission & items stored successfully',
+            'parent' => $admission,
+            // 'items' => $admission->items,
         ], 201);
     }
 
     public function show($id)
     {
-        return JadwalAdmission::with('campus')->findOrFail($id);
-    }
-
-    public function update(Request $request, $id)
-    {
-        $jadwal = JadwalAdmission::findOrFail($id);
-
-        $validated = $request->validate([
-            'type' => 'required|in:national,mandiri',
-            'category' => 'nullable|in:snbp,snbt,mandiri',
-            'campus_id' => 'nullable|exists:campuses,id',
-            'name' => 'required|string',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'batch' => 'nullable|integer|min:1',
-            'status' => 'required|string',
-            'description' => 'nullable|string',
-        ]);
-
-        if ($validated['type'] === 'national' && empty($validated['category'])) {
-            return response()->json(['error' => 'category is required for national type'], 422);
-        }
-
-        if ($validated['type'] === 'mandiri' && empty($validated['campus_id'])) {
-            return response()->json(['error' => 'campus_id is required for mandiri type'], 422);
-        }
-
-        $jadwal->update($validated);
-
-        return response()->json($jadwal);
+        return JadwalAdmission::with(['campus', 'items'])->findOrFail($id);
     }
 
     public function destroy($id)

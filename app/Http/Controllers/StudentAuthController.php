@@ -103,6 +103,25 @@ class StudentAuthController extends Controller
     }
 
 
+    public function toggleNotification(Request $request)
+    {
+        $request->validate([
+            'wants_notification' => 'required|boolean',
+        ]);
+
+        $user = auth()->user();
+        $user->update([
+            'wants_notification' => $request->wants_notification
+        ]);
+
+        return response()->json([
+            'message' => 'Notification setting updated.',
+            'status' => $user->wants_notification
+        ]);
+    }
+
+
+
     public function logout(Request $request)
     {
         $request->user()->tokens()->delete();

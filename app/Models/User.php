@@ -15,7 +15,8 @@ class User extends Authenticatable
         'email',
         'no_telp',
         'password',
-        'role'
+        'role',
+        'wants_notification'
     ];
 
     protected $hidden = [
@@ -36,6 +37,18 @@ class User extends Authenticatable
     public function entryPaths()
     {
         return $this->hasMany(StudentEntryPath::class);
+    }
+
+    public function admissionItems()
+    {
+        return $this->hasManyThrough(
+            AdmissionItem::class,
+            JadwalAdmission::class,
+            'category',
+            'admission_id', 
+            'entry_path_id', 
+            'id' 
+        );
     }
 
 }
