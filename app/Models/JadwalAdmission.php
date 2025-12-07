@@ -11,10 +11,12 @@ class JadwalAdmission extends Model
 
     protected $fillable = [
         'type',
+        'category',
         'campus_id',
         'name',
         'start_date',
         'end_date',
+        'batch',
         'status',
         'description',
     ];

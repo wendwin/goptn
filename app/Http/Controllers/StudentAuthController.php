@@ -28,7 +28,6 @@ class StudentAuthController extends Controller
             'role' => 'student'
         ]);
 
-
         return response()->json([
             'message' => 'Registrasi berhasil, silakan login.'
         ], 201);
