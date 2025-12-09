@@ -16,7 +16,9 @@ class User extends Authenticatable
         'no_telp',
         'password',
         'role',
-        'wants_notification'
+        'wants_notification',
+        'notification_type',  
+        'campus_id'           
     ];
 
     protected $hidden = [
@@ -50,5 +52,4 @@ class User extends Authenticatable
             'id' 
         );
     }
-
 }

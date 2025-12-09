@@ -1,15 +1,15 @@
 <x-mail::message>
-# 🎓 Reminder Jadwal SNPMB
+# 🎓 Reminder Jadwal 
 
 Halo {{ $student->name }},  
-Kamu mengaktifkan pengingat untuk jadwal SNBP di GoPTN.
+Kamu mengaktifkan pengingat untuk jadwal di GoPTN.
 
-Berikut event penting yang akan dimulai:
+Berikut Jadwal {{ $item->name }}:
 
 ---
 
 ### 📌 {{ $item->name }}
-- 🗓 Mulai: **{{ $item->start_date }}**
+- 🕒 Timeline: **{{ $item->start_date }} - {{ $item->end_date ?? 'Belum ditentukan' }}**
 - ⏳ Status: **{{ ucfirst($item->status) }}**
 
 ---

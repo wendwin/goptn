@@ -8,6 +8,7 @@ use App\Models\StudentProfile;
 use App\Models\StudentPTNChoice;
 use App\Models\StudentEntryPath;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class StudentAuthController extends Controller
 {
@@ -103,22 +104,28 @@ class StudentAuthController extends Controller
     }
 
 
-    public function toggleNotification(Request $request)
-    {
-        $request->validate([
-            'wants_notification' => 'required|boolean',
-        ]);
+   public function toggleNotification(Request $request)
+{
+    Log::info('Request body: ', $request->all());
+    $user = auth()->user();
+    Log::info('User before update: ', $user->toArray());
 
-        $user = auth()->user();
-        $user->update([
-            'wants_notification' => $request->wants_notification
-        ]);
+    $user->update([
+        'wants_notification' => $request->wants_notification,
+        'notification_type' => $request->notification_type,
+        'campus_id' => $request->campus_id
+    ]);
 
-        return response()->json([
-            'message' => 'Notification setting updated.',
-            'status' => $user->wants_notification
-        ]);
-    }
+    $user->refresh();
+    Log::info('User after update: ', $user->toArray());
+
+    return response()->json([
+        'message' => 'Notification preference updated.',
+        'wants_notification' => $user->wants_notification,
+        'type' => $user->notification_type,
+        'campus_id' => $user->campus_id
+    ]);
+}
 
 
 

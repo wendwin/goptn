@@ -2,13 +2,11 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Queue\SerializesModels;
 
-class AdmissionReminderEvent implements ShouldBroadcast
+class AdmissionReminderEvent
 {
-    use InteractsWithSockets, SerializesModels;
+    use SerializesModels;
 
     public $student;
     public $item;
@@ -22,15 +20,6 @@ class AdmissionReminderEvent implements ShouldBroadcast
         $this->userId = $student->id;
         $this->message = "Reminder: {$item->name} dimulai pada {$item->start_date}";
     }
-
-    public function broadcastOn()
-    {
-        return ['admission-reminder-'.$this->userId];
-    }
-
-    public function broadcastAs()
-    {
-        return 'AdmissionReminder';
-    }
 }
+
 

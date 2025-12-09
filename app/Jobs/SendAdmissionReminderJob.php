@@ -1,51 +1,7 @@
 <?php
 
-// namespace App\Jobs;
-
-// use App\Events\AdmissionReminderEvent;
-// use App\Models\AdmissionItem;
-// use App\Models\User;
-// use Illuminate\Bus\Queueable;
-// use Illuminate\Contracts\Queue\ShouldQueue;
-// use Illuminate\Foundation\Bus\Dispatchable;
-// use Illuminate\Queue\InteractsWithQueue;
-// use Illuminate\Queue\SerializesModels;
-// use Illuminate\Support\Facades\Log;
-
-// class SendAdmissionReminderJob implements ShouldQueue
-// {
-//     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-//     public function handle()
-//     {
-//         Log::info("SendAdmissionReminderJob dijalankan pada " . now());
-
-//         $dates = [ now()->toDateString() ];
-//         $items = AdmissionItem::where('name', 'Registrasi Akun SNPMB Siswa')
-//             ->whereIn('start_date', $dates)
-//             ->get();
-
-//         Log::info("Jumlah item ditemukan: " . $items->count());
-//         $students = User::where('role', 'student')
-//                         ->where('wants_notification', true)
-//                         ->get();
-
-//         Log::info("Jumlah siswa yang akan dikirimi notifikasi: " . $students->count());
-
-//         foreach ($items as $item) {
-//             foreach ($students as $student) {
-//                 Log::info("Memanggil event untuk student: {$student->email}, item: {$item->name}");
-//                 event(new AdmissionReminderEvent($student, $item));
-//             }
-//         }
-
-//         Log::info("SendAdmissionReminderJob selesai dijalankan pada " . now());
-//     }
-// }
-
 namespace App\Jobs;
 
-use App\Events\AdmissionReminderEvent;
 use App\Models\AdmissionItem;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
@@ -54,70 +10,131 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
+use App\Mail\AdmissionReminderMail;
 
 class SendAdmissionReminderJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+
     public function handle()
-    {
-        Log::info("SendAdmissionReminderJob dijalankan pada " . now());
+{
+    Log::info("SendAdmissionReminderJob dijalankan pada " . now());
 
-        $today = Carbon::today('Asia/Jakarta');
-        $reminderDays = [7, 1];
+    $today = Carbon::today('Asia/Jakarta');
+    $reminderDays = [7, 1]; // H-7 & H-1
 
-        $students = User::where('role', 'student')
-                        ->where('wants_notification', true)
-                        ->get();
+    // Ambil hanya user yang sudah set preferensi notifikasi dan tipe jalurnya
+    $students = User::where('role', 'student')
+                    ->where('wants_notification', true)
+                    ->whereNotNull('notification_type')
+                    ->get();
 
-        Log::info("Jumlah siswa yang akan dikirimi notifikasi: " . $students->count());
+    Log::info("Total siswa dengan preferensi notifikasi: " . $students->count());
 
-        // 1. SNBP
-        $snbpItemNames = [
-            'Registrasi Akun SNPMB Siswa',
-            'Pendaftaran SNBP',
-            'Pengumuman Hasil SNBP'
-        ];
+    // Ambil admission items + relasi jadwal admission
+    $items = AdmissionItem::with('admission')->whereNotNull('start_date')->get();
+
+    $totalItemsToSend = 0;
+    $totalRemindersSent = 0;
+
+    foreach ($items as $item) {
+
+        if (!$item->admission) continue; // skip jika tidak ada relasi admission
+
+        $startDate = Carbon::parse($item->start_date);
+        if ($startDate->isPast()) continue;
 
         foreach ($reminderDays as $daysBefore) {
-            $targetDate = $today->copy()->subDays($daysBefore); // H sebelum
+            $checkDate = $today->copy()->addDays($daysBefore);
 
-            // Ambil item SNBP yang relevan
-            $snbpItems = AdmissionItem::whereIn('name', $snbpItemNames)
-                            ->where('category', 'snbp')
-                            ->whereDate('start_date', $targetDate->toDateString())
-                            ->get();
+            if (!$checkDate->isSameDay($startDate)) continue;
 
-            Log::info("SNBP - H-{$daysBefore}, targetDate: {$targetDate->toDateString()}, items: " . $snbpItems->pluck('name')->join(', '));
+            Log::info("Reminder: {$item->name}, kategori: {$item->admission->category}, campus: {$item->admission->campus_id}");
 
-            foreach ($snbpItems as $item) {
-                foreach ($students as $student) {
-                    Log::info("Event SNBP: student {$student->email}, item {$item->name}");
-                    event(new AdmissionReminderEvent($student, $item));
-                }
-            }
-        }
+            foreach ($students as $student) {
 
-        // 2. SNBT dan Mandiri
-        $otherCategories = ['snbt', 'mandiri'];
+                // --- Filter logika jalur ---
 
-        foreach ($otherCategories as $category) {
-            $items = AdmissionItem::where('category', $category)->get();
-
-            foreach ($items as $item) {
-                foreach ($reminderDays as $daysBefore) {
-                    $targetDate = $today->copy()->subDays($daysBefore); // H sebelum
-                    if ($item->start_date == $targetDate->toDateString()) {
-                        foreach ($students as $student) {
-                            Log::info("Event {$category}: student {$student->email}, item {$item->name}, start_date {$item->start_date}");
-                            event(new AdmissionReminderEvent($student, $item));
-                        }
+                // Jika SNBP / SNBT
+                if (in_array($student->notification_type, ['snbp', 'snbt'])) {
+                    if ($student->notification_type !== $item->admission->category) {
+                        continue; // Skip jika kategori tidak cocok
                     }
                 }
-            }
-        }
 
-        Log::info("SendAdmissionReminderJob selesai dijalankan pada " . now());
+                // Jika Mandiri, wajib cocok kampus
+                if ($student->notification_type === 'mandiri') {
+                    if ($student->campus_id !== $item->admission->campus_id) {
+                        continue;
+                    }
+                }
+
+                // --- Kirim email ---
+                Mail::to($student->email)->send(new AdmissionReminderMail($student, $item));
+                $totalRemindersSent++;
+
+                Log::info("Email dikirim ke {$student->email} untuk item {$item->name}");
+            }
+
+            $totalItemsToSend++;
+            break; // Hindari double reminder untuk hari sama
+        }
     }
+
+    Log::info("SUMMARY: Items processed: {$totalItemsToSend}, email terkirim: {$totalRemindersSent}");
 }
+
+}
+
+
+   // public function handle()
+    // {
+    //     Log::info("SendAdmissionReminderJob dijalankan pada " . now());
+
+    //     $today = Carbon::today('Asia/Jakarta');
+    //     $reminderDays = [7, 1]; // H-7 dan H-1
+
+    //     // Ambil semua siswa yang ingin notifikasi
+    //     $students = User::where('role', 'student')
+    //                     ->where('wants_notification', true)
+    //                     ->get();
+
+    //     Log::info("Jumlah siswa yang akan dikirimi notifikasi: " . $students->count());
+
+    //     // Ambil semua item dengan start_date
+    //     $items = AdmissionItem::whereNotNull('start_date')->get();
+
+    //     $totalItemsToSend = 0;
+    //     $totalRemindersSent = 0;
+
+    //     foreach ($items as $item) {
+    //         $startDate = Carbon::parse($item->start_date);
+
+    //         if ($startDate->isPast()) continue;
+
+    //         foreach ($reminderDays as $daysBefore) {
+    //             $checkDate = $today->copy()->addDays($daysBefore);
+
+    //             if ($checkDate->isSameDay($startDate)) {
+    //                 Log::info("Kirim reminder H-{$daysBefore} untuk item: {$item->name}, start_date: {$item->start_date}");
+
+    //                 foreach ($students as $student) {
+    //                     Log::info("Kirim reminder ke: {$student->email}, item: {$item->name}, H-{$daysBefore}");
+    //                     // Kirim email langsung di job
+    //                     Mail::to($student->email)->send(new AdmissionReminderMail($student, $item));
+    //                     $totalRemindersSent++;
+    //                 }
+
+    //                 $totalItemsToSend++;
+    //                 // hanya kirim sekali per item per hari, keluar dari loop reminderDays
+    //                 break;
+    //             }
+    //         }
+    //     }
+
+    //     Log::info("SendAdmissionReminderJob selesai dijalankan pada " . now());
+    //     Log::info("Summary hari ini: total items untuk dikirim: {$totalItemsToSend}, total reminders dikirim: {$totalRemindersSent}");
+    // }

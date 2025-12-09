@@ -20,4 +20,5 @@ class AdmissionItem extends Model
     {
         return $this->belongsTo(JadwalAdmission::class);
     }
+
 }

@@ -3,21 +3,22 @@
 namespace App\Listeners;
 
 use App\Events\AdmissionReminderEvent;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log; // <--- tambahkan ini
+use Illuminate\Support\Facades\Log;
 
-class SendAdmissionReminder implements ShouldQueue
+class SendAdmissionReminder
 {
     public function handle(AdmissionReminderEvent $event)
     {
-        // Log::info("Listener dipanggil untuk student: {$event->student->email}");
+        // Log awal, sebelum kirim email
+        Log::info("Listener dipanggil untuk student: {$event->student->email}, item: {$event->item->name}");
 
+        // Kirim email
         Mail::to($event->student->email)->send(
             new \App\Mail\AdmissionReminderMail($event->student, $event->item)
         );
 
-        // Log::info("Email berhasil dikirim ke: {$event->student->email}");
+        // Log setelah email dikirim
+        Log::info("Email berhasil dikirim ke: {$event->student->email}, item: {$event->item->name}");
     }
 }
